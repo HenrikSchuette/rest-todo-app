@@ -4,14 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "todo-rest"
-version = "0.1.4"
+version = "0.1.5"
 description = "A simple todo list REST API"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn>=0.32.0",
-]
+dependencies = ["fastapi>=0.115.0", "uvicorn>=0.32.0"]
+
+[project.urls]
+repository = "https://github.com/HenrikSchuette/rest-todo-app"
+
 
 [project.scripts]
 todo-rest = "todo_rest.app:main"

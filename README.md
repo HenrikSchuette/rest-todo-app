@@ -5,7 +5,8 @@ A simple todo list application with REST endpoints and a web dashboard.
 ## Installation
 
 ```bash
-pip install todo-rest```
+pip install todo-rest
+```
 
 ## Running the App
 
