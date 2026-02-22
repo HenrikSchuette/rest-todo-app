@@ -197,12 +197,6 @@
         .api-link a:hover {
             text-decoration: underline;
         }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #718096;
-        }
     </style>
 </head>
 <body>
@@ -228,7 +222,6 @@
             </div>
             
             <div id="todos-container" class="todos-list">
-                <div class="loading">Loading todos...</div>
             </div>
             
             <div class="api-link">
@@ -238,9 +231,10 @@
     </div>
     
     <script>
+        let currentTodos = [];
+
         async function loadTodos() {
             const container = document.getElementById('todos-container');
-            container.innerHTML = '<div class="loading">Loading todos...</div>';
             
             try {
                 const response = await fetch('/todos');
@@ -253,8 +247,8 @@
                 document.getElementById('pending-count').textContent = 
                     todos.filter(t => !t.completed).length;
                 
-                // Display todos
-                if (todos.length === 0) {
+                // Handle empty state
+                if (todos.length === 0 && currentTodos.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">📭</div>
@@ -262,29 +256,93 @@
                             <p>Use the REST API to create your first todo.</p>
                         </div>
                     `;
-                } else {
-                    container.innerHTML = todos.map(todo => `
-                        <div class="todo-item ${todo.completed ? 'completed' : ''}">
-                            <div class="todo-header">
-                                <span class="todo-title">${escapeHtml(todo.title)}</span>
-                                <span class="todo-id">#${todo.id}</span>
-                            </div>
-                            ${todo.description ? `<div class="todo-description">${escapeHtml(todo.description)}</div>` : ''}
-                            <span class="todo-status ${todo.completed ? 'status-completed' : 'status-pending'}">
-                                ${todo.completed ? '✓ Completed' : '⏳ Pending'}
-                            </span>
-                        </div>
-                    `).join('');
+                    return;
                 }
+                
+                // Remove empty state if it exists
+                const emptyState = container.querySelector('.empty-state');
+                if (emptyState) {
+                    emptyState.remove();
+                }
+                
+                // Create maps for efficient lookup
+                const currentTodoMap = new Map(currentTodos.map(t => [t.id, t]));
+                const newTodoMap = new Map(todos.map(t => [t.id, t]));
+                
+                // Remove deleted todos
+                currentTodos.forEach(todo => {
+                    if (!newTodoMap.has(todo.id)) {
+                        const element = container.querySelector(`[data-todo-id="${todo.id}"]`);
+                        if (element) {
+                            element.remove();
+                        }
+                    }
+                });
+                
+                // Add new todos or update existing ones
+                todos.forEach((todo, index) => {
+                    const existingElement = container.querySelector(`[data-todo-id="${todo.id}"]`);
+                    const todoHtml = createTodoElement(todo);
+                    
+                    if (!existingElement) {
+                        // New todo - add it
+                        if (index === 0) {
+                            container.insertAdjacentHTML('afterbegin', todoHtml);
+                        } else {
+                            // Find the correct position
+                            const prevTodoId = todos[index - 1].id;
+                            const prevElement = container.querySelector(`[data-todo-id="${prevTodoId}"]`);
+                            if (prevElement) {
+                                prevElement.insertAdjacentHTML('afterend', todoHtml);
+                            } else {
+                                container.insertAdjacentHTML('beforeend', todoHtml);
+                            }
+                        }
+                    } else {
+                        // Check if todo has changed
+                        const oldTodo = currentTodoMap.get(todo.id);
+                        if (todoHasChanged(oldTodo, todo)) {
+                            existingElement.outerHTML = todoHtml;
+                        }
+                    }
+                });
+                
+                // Update current todos
+                currentTodos = todos;
+                
             } catch (error) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">⚠️</div>
-                        <h3>Error loading todos</h3>
-                        <p>${error.message}</p>
-                    </div>
-                `;
+                // Only show error if container is empty or already showing error
+                if (currentTodos.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">⚠️</div>
+                            <h3>Error loading todos</h3>
+                            <p>${error.message}</p>
+                        </div>
+                    `;
+                }
             }
+        }
+        
+        function createTodoElement(todo) {
+            return `
+                <div class="todo-item ${todo.completed ? 'completed' : ''}" data-todo-id="${todo.id}">
+                    <div class="todo-header">
+                        <span class="todo-title">${escapeHtml(todo.title)}</span>
+                        <span class="todo-id">#${todo.id}</span>
+                    </div>
+                    ${todo.description ? `<div class="todo-description">${escapeHtml(todo.description)}</div>` : ''}
+                    <span class="todo-status ${todo.completed ? 'status-completed' : 'status-pending'}">
+                        ${todo.completed ? '✓ Completed' : '⏳ Pending'}
+                    </span>
+                </div>
+            `;
+        }
+        
+        function todoHasChanged(oldTodo, newTodo) {
+            return oldTodo.title !== newTodo.title ||
+                   oldTodo.description !== newTodo.description ||
+                   oldTodo.completed !== newTodo.completed;
         }
         
         function escapeHtml(text) {
@@ -296,8 +354,8 @@
         // Load todos on page load
         loadTodos();
         
-        // Auto-refresh every 5 seconds
-        setInterval(loadTodos, 5000);
+        // Auto-refresh every 200 ms
+        setInterval(loadTodos, 200);
     </script>
 </body>
 </html>
