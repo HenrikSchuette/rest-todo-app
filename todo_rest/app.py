@@ -1,4 +1,6 @@
-from fastapi import FastAPI, HTTPException
+import argparse
+import asyncio
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -14,7 +16,16 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # In-memory storage
 todos = {}
-next_id = 1
+next_id = [1]  # Use list so we can modify without global
+
+
+@app.middleware("http")
+async def add_latency(request: Request, call_next):
+    """Add configurable latency to all requests"""
+    response = await call_next(request)
+    if hasattr(app.state, 'latency_ms') and app.state.latency_ms > 0:
+        await asyncio.sleep(app.state.latency_ms / 1000.0)
+    return response
 
 
 class TodoCreate(BaseModel):
@@ -53,15 +64,14 @@ def get_todo(todo_id: int):
 @app.post("/todo", response_model=Todo, status_code=201)
 def create_todo(todo: TodoCreate):
     """Create a new todo"""
-    global next_id
     new_todo = Todo(
-        id=next_id,
+        id=next_id[0],
         title=todo.title,
         description=todo.description,
         completed=todo.completed
     )
-    todos[next_id] = new_todo
-    next_id += 1
+    todos[next_id[0]] = new_todo
+    next_id[0] += 1
     return new_todo
 
 
@@ -92,6 +102,15 @@ def delete_todo(todo_id: int):
 
 def main():
     """Main entrypoint for running the application"""
+    parser = argparse.ArgumentParser(description="Todo List REST API")
+    parser.add_argument("--latency", type=int, default=0,
+                       help="Add latency in milliseconds to all requests")
+    args = parser.parse_args()
+    
+    app.state.latency_ms = args.latency
+    if app.state.latency_ms > 0:
+        print(f"Adding {app.state.latency_ms}ms latency to all requests")
+    
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
 

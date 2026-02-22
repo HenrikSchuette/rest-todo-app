@@ -27,6 +27,15 @@ uv run uvicorn todo_rest.app:app --reload
 
 The API will be available at http://localhost:8000
 
+### CLI Options
+
+You can add artificial latency to all API requests for testing purposes:
+```bash
+todo-rest --latency 500
+```
+
+This adds a 500ms delay to all responses. Useful for testing loading states and timeouts in client applications.
+
 ## Dashboard
 
 Open http://localhost:8000 in your browser to view the todo dashboard. The dashboard shows:
