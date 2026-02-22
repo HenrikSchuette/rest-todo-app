@@ -10,13 +10,19 @@ uv sync
 
 ## Running the App
 
+After installation, you can run the app with the installed command:
+```bash
+todo-rest
+```
+
+Or using the development commands:
 ```bash
 uv run python main.py
 ```
 
-Or with uvicorn directly:
+Or with uvicorn directly (with auto-reload for development):
 ```bash
-uv run uvicorn main:app --reload
+uv run uvicorn todo_rest.app:app --reload
 ```
 
 The API will be available at http://localhost:8000
